@@ -123,7 +123,8 @@ int main(int argc, char **argv){
     A=similarityMatrix(N,d, inputMatrix, &ADataPoints);
 
     //if goal is sym
-    printMatrix(A);
+    if (goal=="sym")
+        printMatrix(A, N,N);
 
 
         

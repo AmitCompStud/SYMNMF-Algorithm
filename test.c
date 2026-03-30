@@ -7,31 +7,6 @@
     exit(1); \
 } while (0)
 
-double* readInput(FILE* filePointer, int* N){
-    //TODO: fix.
-    double currInput, *inputVector;  
-    int counter = 0;
-    //first loop: counting how many vectors there are in the file
-    while (fscanf(filePointer, "%lf", &currInput) == 1)
-    {
-        counter++; 
-    }
-    rewind(filePointer);
-    inputVector = (double*)malloc(counter * sizeof(double));
-    if (inputVector == NULL){
-        HANDLE_ERROR();
-    }
-
-    //second loop: putting the numbers in the input vector
-    counter = 0;//Reseting the counter
-    while (fscanf(filePointer, "%lf", &currInput) == 1)
-    {
-        inputVector[counter++] = currInput;
-    }
-    *N = counter;
-    return inputVector;
-}
-
 
 double** initalizeMatrix(int length, int width, double** pPointer){
     double **A,*p;
@@ -45,14 +20,88 @@ double** initalizeMatrix(int length, int width, double** pPointer){
     return A;
 }
 
+void printMatrix(double** matrix, int rows, int cols){
+    int i, j;
+    for(i=0;i<rows;i++){
+        for(j=0;j<cols;j++){
+            printf("%.4f", matrix[i][j]);
+            if (j!=cols-1) //not end of line
+                printf(", ");
+        }
+        printf("\n");
+    }
+}
+
+
+double** readInput(FILE* filePointer, int* N, int* D, double** inputMatrixDataPoints){
+    double currInput, **inputMatrix;  
+    int counterN = 0, counterD = 0, total_elements = 0, i, j;
+    char c = '0';
+    //first pass for finding N and D
+    while (fscanf(filePointer, "%lf%c", &currInput, &c) == 2){
+        total_elements++;
+        if (counterN == 0){ 
+            counterD++; //count D by the first vector
+        }
+        if (c == '\n'){
+            counterN++;
+        }
+    }
+    if (total_elements != counterN * counterD){ //if N*D != all elements, then the input file is wrong
+        HANDLE_ERROR();
+    }
+    *N = counterN;
+    *D = counterD;
+    rewind(filePointer);
+    inputMatrix = initalizeMatrix(*N,*D,inputMatrixDataPoints);
+    if (inputMatrix == NULL){
+        HANDLE_ERROR();
+    }
+    //second loop: updating the input matrix
+    for (i = 0; i < *N; i++) {
+        for (j = 0; j < *D; j++) {
+            if (fscanf(filePointer, "%lf%c", &inputMatrix[i][j], &c) != 2) {
+                //handles the case where the file ends unexpectedly
+                HANDLE_ERROR();
+            }
+        }
+    }
+    return inputMatrix;
+}
+
+
+double euclideanDistance(double* vector1, double* vector2, int dim){
+    int i;
+    double result = 0;//final distance
+    for(i = 0; i < dim; i++){
+        result += (vector1[i]-vector2[i])*(vector1[i]-vector2[i]); //distance between two points squared 
+    }
+    return result;
+}
+
+
+double** similarityMatrix(int N, int D, double** inputs, double** dataPoints){
+    double** A=initalizeMatrix(N,N,dataPoints), dist_sq;
+    int i, j;
+    
+    for (i = 0; i < N; i++){
+        for (j = i+1; j < N; j++){
+            dist_sq = euclideanDistance(inputs[i], inputs[j], D);
+            A[i][j] = exp(-dist_sq / 2.0);
+            A[j][i] = A[i][j]; //the matrix is symmteric
+        }
+    }
+    return A;
+
+}
 
 
 int main(int argc, char **argv){
     //intializing variables
     FILE *ifp = NULL;
     char *goal;
-    double **inputMatrix, **A, *ADataPoints;
-    int i, N;
+    double **inputMatrix, *inputMatrixDataPoints, **A, *ADataPoints;
+    int N, d;
     
     //checking the arguments
     if (argc != 3){
@@ -65,10 +114,12 @@ int main(int argc, char **argv){
         HANDLE_ERROR();
     }
     
-    inputMatrix = readInput(ifp, &N); //intialzing the input vector
+    inputMatrix = readInput(ifp, &N, &d, &inputMatrixDataPoints); //reading the input from the file
+    if (fclose(ifp) == EOF){ //closing the file
+        HANDLE_ERROR();
+    }
 
     //creating matrix A
-    A=initalizeMatrix(N,N,&ADataPoints);
-
+    A=similarityMatrix(N,d, inputMatrix, &ADataPoints);
         
 }
