@@ -1,5 +1,6 @@
-#define PY_SSIZE_T_CLEAN
-#include <Python.h>
+# define PY_SSIZE_T_CLEAN
+# include <Python.h>
+# include "symnmf.h"
 
 
 static double* PyListToRow(PyObject* lst){
@@ -56,12 +57,12 @@ static **double convertPyMatrixToCMatrix(PyObject* args, int* N, int* d){
 }
 
 
-void freeInputMatrix(double** inputMatrix, int rows){
+void freeMatrix(double** matrix, int rows){
     int i;
     for(i=0;i<rows;i++){
-        free(inputMatrix[i]);
+        free(matrix[i]);
     }
-    free(inputMatrix);
+    free(matrix);
 }
 
 
@@ -77,7 +78,7 @@ static PyObject* sym(PyObject* self, PyObject *args){
     //freeing memory
     free(A);
     free(ADataPoints);
-    freeInputMatrix(inputMatrix, N);
+    freeMatrix(inputMatrix, N);
     return pyMatrix;
 }
 
@@ -97,7 +98,7 @@ static PyObject* ddg(PyObject* self, PyObject *args){
     free(ADataPoints);
     free(D);
     free(DDataPoints);
-    freeInputMatrix(inputMatrix, N);
+    freeMatrix(inputMatrix, N);
     return pyMatrix;
 }
 
@@ -123,7 +124,7 @@ static PyObject* norm(PyObject* self, PyObject *args){
     free(DTagDataPoints);
     free(W);
     free(WDataPoints);
-    freeInputMatrix(inputMatrix, N);
+    freeMatrix(inputMatrix, N);
     return pyMatrix;
 }
 
@@ -138,11 +139,52 @@ static PyObject* symnmf(PyObject* self, PyObject *args){
     k = PyObject_Length(PyList_GetItem(pyMatrixH, 0)); //length of the first row in matrix H
     W = PyMatrixToMatrix(pyMatrixW);
     H = PyMatrixToMatrix(pyMatrixH);
+    symnmfAlgorithm(W,H,N,k); //running the symnmf algo, updates H
     
+    pyMatrix = matrixToPyMatrix(H, N, N); //turning H into python matrix
     //freeing memory
+    freeMatrix(W);
+    freeMatrix(H);
 
-    free(WDataPoints);
     return pyMatrix;
 }
 
 
+static PyMethodDef symnmfMethods[] = {
+    {"sym",                 
+      (PyCFunction) sym,
+      METH_VARARGS,           
+      PyDoc_STR("input: N x d matrix of floats. output: returns the similarity matrix A")},
+    {"ddg",                 
+      (PyCFunction) ddg,
+      METH_VARARGS,           
+      PyDoc_STR("input: N x d matrix of floats. output: returns the diagonal degree matrix D")},
+    {"norm",                 
+      (PyCFunction) norm,
+      METH_VARARGS,           
+      PyDoc_STR("input: N x d matrix of floats. output: returns the normalized similarity matrix W")},
+    {"symnmf",                 
+      (PyCFunction) symnmf,
+      METH_VARARGS,           
+      PyDoc_STR("input: N x N normalized similarity matrix, N x k initial decomposition matrix H. output: returns the updated decomposition matrix H")},
+    {NULL, NULL, 0, NULL}
+};
+
+
+static struct PyModuleDef symnmfmodule = {
+    PyModuleDef_HEAD_INIT,
+    "symnmfmodule", /* name of module */
+    NULL, /* module documentation, may be NULL */
+    -1,  /* size of per-interpreter state of the module, or -1 if the module keeps state in global variables. */
+    symnmfMethods /* the PyMethodDef array from before containing the methods of the extension */
+};
+
+PyMODINIT_FUNC PyInit_symnmfmodule(void)
+{
+    PyObject *m;
+    m = PyModule_Create(&symnmfmodule);
+    if (!m) {
+        return NULL;
+    }
+    return m;
+}

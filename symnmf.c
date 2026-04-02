@@ -3,6 +3,7 @@
 # include <math.h>
 # include <stdlib.h>
 # include <string.h>
+# include "symnmf.h"
 # define HANDLE_ERROR() do { \
     printf("An Error Has Occurred\n"); \
     exit(1); \
@@ -155,21 +156,93 @@ double frobeniusNormSquared(double** A, double** B, int rows, int cols){
     return sum;
 }
 
-double** symnmfAlgorithm(double** W, double** H, int N, int k){
-    double *newHDataPoints;
-    double **newH = initializeMatrix(N,k, newHDataPoints);
-    double eps = 1e-4, beta = 0.5; 
+
+double matrixMultSingleValue(double** A, double** B, int i, int j, int ACols){
+    int k;
+    double res = 0;
+    for (k = 0; k < ACols; k++){
+        res += A[i][k] * B[k][j];
+    }
+    return res;
+}
+
+
+void matrixMult(double** C, double** A, double** B, int ARows, int ACols,int BCols){//C=A*B
+    int i, j;
+    for (i = 0; i < ARows; i++){
+        for (j = 0; i < BCols; j++){
+           C[i][j] = matrixMultSingleValue(A, B, i, j, ACols);
+        }
+    }
+}
+
+
+double** matrixTranspose(double** transposeMatrix, double** matrix, int rows, int cols){
+    int i,j;
+    for (i = 0; i < rows;i++){
+        for(j = 0; j < cols;j++){
+            transposeMatrix[j][i] = matrix[i][j];
+        }
+    }
+    return transposeMatrix;
+}
+
+
+double calcNewHValue(double** H, double** WMultH, double** HMultHTmultH, double beta, int i, int j){
+    
+    if (HMultHTmultH[i][j] == 0){
+        
+    }
+    else{
+        return H[i][j] * (1 - beta + beta * (WMultH[i][j] / (HMultHTmultH[i][j] + 1e-6))); //adding 1e-6 to the denominator to not divide by 0
+    }
+}
+
+
+void deepCopyMatrix(double** A, double** B, int rows, int cols){ //A[i][j] = B[i][j] for all i,j
+    int i, j;
+    for (i = 0; i < rows; i++){
+        for (j = 0; j < cols; j++){
+            A[i][j] = B[i][j];
+        }
+    }
+}
+
+
+void symnmfAlgorithm(double** W, double** H, int N, int k){
+    double *newHDataPoints, *HTDataPoints, *WMultHDataPoints, *MTMultHDataPoints, *HMultHTmultHDataPoints;
+    double **newH = initializeMatrix(N, k, &newHDataPoints), **WMultH = initializeMatrix(N, k, &WMultHDataPoints), **HT = initializeMatrix(k, N, &HTDataPoints), **HTMultH=initializeMatrix(k, k, &MTMultHDataPoints),**HMultHTmultH=initializeMatrix(N, k,HMultHTmultHDataPoints);
+    double eps = 1e-4, beta = 0.5;
     int maxIter = 300, currIter = 0, i, j;
     do {
-        //W*H
+        if(currIter!=0){ //if not first iteration then update H^(i)=newH^(i-1)
+            deepCopyMatrix(H,newH,N,k); // H gets newH values
+        }
+        matrixMult(WMultH, W, H, N, N, k); //WMultH = W*H
+        matrixTranspose(HT, H, N, k); //HT=H^T
+        matrixMult(HTMultH, HT, H, k, N, k); //HTMultH = (H^T)*H
+        matrixMult(HMultHTmultH, H, HT, N, k, k); //HMultHTmultH = H*((H^T)*H)
+        
         for (i = 0; i < N; j++){
             for(j=0;j<k;j++){
-                H[i][j] = calcNewHValue(W,H,N,k,i,j);
+                newH[i][j] = calcNewHValue(H,WMultH, HMultHTmultH,beta, i,j);
             }
         }
+        currIter++;
 
-
-    } while (currIter < maxIter && (frobeniusNormSquared(H, newH, N, k) < eps));
+    } while (currIter < maxIter && (frobeniusNormSquared(H, newH, N, k) >= eps));
+    
+    deepCopyMatrix(H,newH,N,k); // H gets newH values
+     
+    //Freeing memory
+    free(HT);
+    free(HTDataPoints);
+    free(WMultH);
+    free(WMultHDataPoints);
+    free(HMultHTmultH);
+    free(HMultHTmultHDataPoints);
+    free(newH);
+    free(newHDataPoints);
 }
 
 
