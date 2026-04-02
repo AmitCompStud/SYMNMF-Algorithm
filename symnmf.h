@@ -1,5 +1,9 @@
 #ifndef SYMNMF_H_ 
 #define SYMNMF_H_
+# define HANDLE_ERROR() do { \
+    printf("An Error Has Occurred\n"); \
+    exit(1); \
+} while (0)
 
 double** similarityMatrix(int N, int D, double** inputs, double** dataPoints);
 
