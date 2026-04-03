@@ -12,13 +12,13 @@ double** initializeMatrix(int length, int width, double** pPointer){
 
     p = calloc(length*width , sizeof(double));
     if (p == NULL)
-        HANDLE_ERROR();
+        return NULL; /*if calloc failed*/
     A = malloc(length*sizeof(double*));
     if (A == NULL)
-        HANDLE_ERROR();
+       return NULL; /*if malloc failed*/
     for( i=0 ; i<length ; i++ )
         A[i] = p+i*width;
-    *pPointer = p; /*saving the adress of p for freeing later*/
+    *pPointer = p; /*saving the address of p for freeing later*/
     return A;
 }
 
@@ -36,7 +36,7 @@ void printMatrix(double** matrix, int rows, int cols){
 
 
 double** readInput(FILE* filePointer, int* N, int* D, double** inputMatrixDataPoints){
-    double currInput, **inputMatrix;
+    double currInput, **inputMatrix = NULL;
     int counterN = 0, counterD = 0, total_elements = 0, i, j;
     char c = '0';
     /*first pass for finding N and D*/
@@ -57,6 +57,8 @@ double** readInput(FILE* filePointer, int* N, int* D, double** inputMatrixDataPo
     rewind(filePointer);
     inputMatrix = initializeMatrix(*N,*D,inputMatrixDataPoints);
     if (inputMatrix == NULL){
+        free(*inputMatrixDataPoints);
+        free(inputMatrix);
         HANDLE_ERROR();
     }
     /*second loop: updating the input matrix*/
@@ -92,8 +94,8 @@ double sumRowMatrix(double** matrix, int cols,int row ){
 }
 
 
-double** similarityMatrix(int N, int D, double** inputs, double** dataPoints){
-    double** A = initializeMatrix(N,N,dataPoints), dist_sq;
+void similarityMatrix(double**A, int N, int D, double** inputs){ /*updates matrix A*/
+    double dist_sq;
     int i, j;
     
     for (i = 0; i < N; i++){
@@ -103,33 +105,26 @@ double** similarityMatrix(int N, int D, double** inputs, double** dataPoints){
             A[j][i] = A[i][j]; /*the matrix is symmteric*/
         }
     }
-    return A;
-
 }
 
 
-double** diagonalMatrix(double** A, int N, double** dataPoints){
-    double** D = initializeMatrix(N,N, dataPoints);
+void diagonalMatrix(double** D, double** A, int N){ /*updates matrix D*/
     int i;
     for(i=0;i<N;i++){
         D[i][i]= sumRowMatrix(A,N,i);
     }
-    return D;
 }
 
 
-double** raiseNegativeHalfDiag(double** matrix, int N, double** dataPoints){
-    double** DTag = initializeMatrix(N, N, dataPoints);
+void raiseNegativeHalfDiag(double** DTag, double** matrix, int N){ /*updates DTag*/
     int i;
     for (i = 0; i < N; i++){
         DTag[i][i] = 1.0 / sqrt(matrix[i][i]);
     }
-    return DTag;
 }
 
 
-double** normalizedSimilarityMatrix(double** A, double** DTag, int N, double ** dataPoints){
-    double** W = initializeMatrix(N,N, dataPoints);
+void normalizedSimilarityMatrix(double** W, double** A, double** DTag, int N){ /*updates matrix W*/
     int i,j;
     for (i = 0;i<N;i++){
         for(j = i + 1;j<N;j++){ /*w_ii = 0 for all i, initialized before*/
@@ -137,7 +132,6 @@ double** normalizedSimilarityMatrix(double** A, double** DTag, int N, double ** 
             W[j][i] = W[i][j]; /*W is symmetric*/
         }
     }
-    return W;
 }
 
 
@@ -199,11 +193,38 @@ void deepCopyMatrix(double** A, double** B, int rows, int cols){ /*A[i][j] = B[i
 }
 
 
-void symnmfAlgorithm(double** W, double** H, int N, int k){
-    double *newHDataPoints, *HTDataPoints, *WMultHDataPoints, *MTMultHDataPoints, *HMultHTmultHDataPoints;
-    double **newH = initializeMatrix(N, k, &newHDataPoints), **WMultH = initializeMatrix(N, k, &WMultHDataPoints), **HT = initializeMatrix(k, N, &HTDataPoints), **HTMultH=initializeMatrix(k, k, &MTMultHDataPoints),**HMultHTmultH=initializeMatrix(N, k, &HMultHTmultHDataPoints);
+void freeData(double **M1, double **M2, double **M3, double **M4, double **M5, double *M1DataPoints, double *M2DataPoints, double *M3DataPoints, double *M4DataPoints, double *M5DataPoints){
+    free(M1);
+    free(M2);
+    free(M3);
+    free(M4);
+    free(M5);
+    free(M1DataPoints);
+    free(M2DataPoints);
+    free(M3DataPoints);
+    free(M4DataPoints);
+    free(M5DataPoints);
+}
+
+
+int checkMallocFailure5(double** M1, double** M2, double** M3,double** M4, double* M5, double* M1DataPoints, double* M2DataPoints, double* M3DataPoints, double* M4DataPoints, double* M5DataPoints){
+    if (M1 == NULL || M2 == NULL || M3 == NULL || M4 == NULL || M5 == NULL || M1DataPoints == NULL || M2DataPoints == NULL || M3DataPoints == NULL || M4DataPoints == NULL || M5DataPoints == NULL){  /*Matrix being null means malloc failed*/
+        freeData(M1,M2,M3,M4,M5,M1DataPoints,M2DataPoints,M3DataPoints,M4DataPoints,M5DataPoints);
+        return 1;
+    }
+    return 0;
+}
+
+
+int symnmfAlgorithm(double** W, double** H, int N, int k){
+    double *newHDataPoints = NULL, *HTDataPoints = NULL, *WMultHDataPoints = NULL, *HTMultHDataPoints = NULL, *HMultHTmultHDataPoints = NULL;
+    double **newH = initializeMatrix(N, k, &newHDataPoints), **WMultH = initializeMatrix(N, k, &WMultHDataPoints), **HT = initializeMatrix(k, N, &HTDataPoints), **HTMultH=initializeMatrix(k, k, &HTMultHDataPoints),**HMultHTmultH=initializeMatrix(N, k, &HMultHTmultHDataPoints);
     double eps = 1e-4, beta = 0.5;
     int maxIter = 300, currIter = 0, i, j;
+    /*checking if any malloc failed when initializing matrices*/
+    if (checkMallocFailure5(newH, WMultH, HT, HTMultH, HMultHTmultH, newHDataPoints, WMultHDataPoints, HTDataPoints, HTMultHDataPoints, HMultHTmultHDataPoints) == 1){
+        return 1;
+    }
     do {
         if(currIter!=0){ /*if not first iteration then update H^(i)=newH^(i-1)*/
             deepCopyMatrix(H,newH,N,k); /* H gets newH values*/
@@ -219,67 +240,61 @@ void symnmfAlgorithm(double** W, double** H, int N, int k){
             }
         }
         currIter++;
-
     } while (currIter < maxIter && (frobeniusNormSquared(H, newH, N, k) >= eps));
     
     deepCopyMatrix(H,newH,N,k); /* H gets newH values*/
      
     /*Freeing memory*/
-    free(HT);
-    free(HTDataPoints);
-    free(WMultH);
-    free(WMultHDataPoints);
-    free(HMultHTmultH);
-    free(HMultHTmultHDataPoints);
-    free(newH);
-    free(newHDataPoints);
+    freeData(HT, WMultH, HTMultH,HMultHTmultH, newH, HTDataPoints,WMultHDataPoints,HTMultHDataPoints,HMultHTmultHDataPoints,newHDataPoints);
+    return 0;
 }
 
 
-void freeData(double **A, double *ADataPoints, double **D, double *DDataPoints, double **DTag, double *DTagDataPoints, double **W, double *WDataPoints){
-        free(ADataPoints);
-        free(A);
-        free(DDataPoints);
-        free(D);
-        free(DTagDataPoints);
-        free(DTag);
-        free(WDataPoints);
-        free(W);
+int checkMallocFailure3(double** M1, double** M2, double** M3, double* M1DataPoints, double* M2DataPoints, double* M3DataPoints){
+    if (M1 == NULL || M2 == NULL || M3 == NULL || M1DataPoints == NULL || M2DataPoints == NULL || M3DataPoints == NULL){  /*Matrix being null means malloc failed*/
+        freeData(M1,M2,M3,NULL,NULL,M1DataPoints,M2DataPoints,M3DataPoints,NULL,NULL);
+        return 1;
+    }
+    return 0;
 }
 
 
 int handleGoal(char* goal, double** inputMatrix, int N, int d) {
-    double **A = NULL, *ADataPoints = NULL, **D = NULL, *DDataPoints = NULL, **DTag = NULL, *DTagDataPoints = NULL, **W = NULL, *WDataPoints = NULL;
-    /*creating matrix A*/
-    A = similarityMatrix(N, d, inputMatrix, &ADataPoints);
+    double **A = NULL, *ADataPoints = NULL, **D = NULL, *DDataPoints = NULL, **W = NULL, *WDataPoints = NULL;
+    /*initalizing the matrices*/
+    A = initializeMatrix(N, N, &ADataPoints);
+    D = initializeMatrix(N, N, &DDataPoints);
+    W = initializeMatrix(N, N, &WDataPoints);
+    if (checkMallocFailure3(A, D, W, ADataPoints, DDataPoints, WDataPoints) == 1){
+        return 1;
+    }
+    
+    similarityMatrix(A, N, d, inputMatrix); /*creating matrix A*/
 
     if (strcmp(goal, "sym") == 0){ /*goal == sym*/
         printMatrix(A, N, N);
-        freeData(A, ADataPoints, D, DDataPoints, DTag, DTagDataPoints, W, WDataPoints);
+        freeData(A, D, W, NULL, NULL, ADataPoints, DDataPoints, WDataPoints, NULL, NULL);
         return 0;
     }
 
-    /*creating matrix D*/
-    D = diagonalMatrix(A, N, &DDataPoints);
+    diagonalMatrix(D,A, N);/*creating matrix D*/
 
     if (strcmp(goal, "ddg") == 0){ /*goal == ddg*/
         printMatrix(D, N, N);
-        freeData(A, ADataPoints, D, DDataPoints, DTag, DTagDataPoints, W, WDataPoints);
+        freeData(A, D, W, NULL, NULL, ADataPoints, DDataPoints, WDataPoints, NULL, NULL);
         return 0;
     }
 
-    /*creating matrix W*/
-    /*D'= D^(-1/2)*/
-    DTag = raiseNegativeHalfDiag(D,N, &DTagDataPoints);
-    W = normalizedSimilarityMatrix(A, DTag, N, &WDataPoints);
+    raiseNegativeHalfDiag(D, D, N); /*updates D = D^(-1/2)*/
+    normalizedSimilarityMatrix(W,A, D, N); /*creating matrix W*/
 
     if (strcmp(goal, "norm") == 0){ /*goal == norm*/
         printMatrix(W, N, N);
-        freeData(A, ADataPoints, D, DDataPoints, DTag, DTagDataPoints, W, WDataPoints);
+        freeData(A, D, W, NULL, NULL, ADataPoints, DDataPoints, WDataPoints, NULL, NULL);
         return 0;
     }
     /*if goal is not sym, ddg or norm*/
-    freeData(A, ADataPoints, D, DDataPoints, DTag, DTagDataPoints, W, WDataPoints);
+    freeData(A, D, W, NULL, NULL, ADataPoints, DDataPoints, WDataPoints, NULL, NULL);
     return 1;
 }
 
@@ -288,7 +303,7 @@ int main(int argc, char **argv){
     /*intializing variables*/
     FILE *ifp = NULL;
     char *goal;
-    double **inputMatrix, *inputMatrixDataPoints;
+    double **inputMatrix=NULL, *inputMatrixDataPoints=NULL;
     int N, d, result;
     
     /*checking the arguments*/
@@ -308,7 +323,7 @@ int main(int argc, char **argv){
     }
     
     /*handling goal*/
-    result = handleGoal(goal, inputMatrix, N, d) == 1;
+    result = handleGoal(goal, inputMatrix, N, d);
     /*freeing memory*/
     free(inputMatrixDataPoints);
     free(inputMatrix);
