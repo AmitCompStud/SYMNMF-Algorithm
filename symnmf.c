@@ -137,7 +137,7 @@ void normalizedSimilarityMatrix(double** W, double** A, double** DTag, int N){ /
 
 double frobeniusNormSquared(double** A, double** B, int rows, int cols){
     int i,j;
-    double sum;
+    double sum = 0;
     for (i = 0; i < rows; i++){
         for (j = 0; j < cols; j++){
             sum += (A[i][j] - B[i][j]) * (A[i][j] - B[i][j]);
@@ -160,7 +160,7 @@ double matrixMultSingleValue(double** A, double** B, int i, int j, int ACols){
 void matrixMult(double** C, double** A, double** B, int ARows, int ACols,int BCols){/*C=A*B*/
     int i, j;
     for (i = 0; i < ARows; i++){
-        for (j = 0; i < BCols; j++){
+        for (j = 0; j < BCols; j++){
            C[i][j] = matrixMultSingleValue(A, B, i, j, ACols);
         }
     }
@@ -207,7 +207,7 @@ void freeData(double **M1, double **M2, double **M3, double **M4, double **M5, d
 }
 
 
-int checkMallocFailure5(double** M1, double** M2, double** M3,double** M4, double* M5, double* M1DataPoints, double* M2DataPoints, double* M3DataPoints, double* M4DataPoints, double* M5DataPoints){
+int checkMallocFailure5(double** M1, double** M2, double** M3,double** M4, double** M5, double* M1DataPoints, double* M2DataPoints, double* M3DataPoints, double* M4DataPoints, double* M5DataPoints){
     if (M1 == NULL || M2 == NULL || M3 == NULL || M4 == NULL || M5 == NULL || M1DataPoints == NULL || M2DataPoints == NULL || M3DataPoints == NULL || M4DataPoints == NULL || M5DataPoints == NULL){  /*Matrix being null means malloc failed*/
         freeData(M1,M2,M3,M4,M5,M1DataPoints,M2DataPoints,M3DataPoints,M4DataPoints,M5DataPoints);
         return 1;
@@ -232,11 +232,11 @@ int symnmfAlgorithm(double** W, double** H, int N, int k){
         matrixMult(WMultH, W, H, N, N, k); /*WMultH = W*H*/
         matrixTranspose(HT, H, N, k); /*HT=H^T*/
         matrixMult(HTMultH, HT, H, k, N, k); /*HTMultH = (H^T)*H*/
-        matrixMult(HMultHTmultH, H, HT, N, k, k); /*HMultHTmultH = H*((H^T)*H)*/
+        matrixMult(HMultHTmultH, H, HTMultH, N, k, k); /*HMultHTmultH = H*((H^T)*H)*/
         
-        for (i = 0; i < N; j++){
-            for(j=0;j<k;j++){
-                newH[i][j] = calcNewHValue(H,WMultH, HMultHTmultH,beta, i,j);
+        for (i = 0; i < N; i++){
+            for(j = 0; j < k; j++){
+                newH[i][j] = calcNewHValue(H,WMultH, HMultHTmultH, beta, i, j);
             }
         }
         currIter++;
@@ -333,6 +333,4 @@ int main(int argc, char **argv){
     }
     
     return 0;
-
-
 }

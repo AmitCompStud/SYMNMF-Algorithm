@@ -3,24 +3,33 @@
 # include "symnmf.h"
 
 
+static void freeMatrix(double** matrix, int rows){
+    int i;
+    for(i=0;i<rows;i++){
+        free(matrix[i]);
+    }
+    free(matrix);
+}
+
+
 static double* PyListToRow(PyObject* lst){
     int i, n = PyObject_Length(lst);
     double* row = malloc(n * sizeof(double));
     if (row == NULL){ /*if malloc failed*/
-        return NULL
+        return NULL;
     }
     for (i = 0; i < n; i++){
-        row[i] = PyList_GetItem(lst, i);
+        row[i] = PyFloat_AsDouble(PyList_GetItem(lst, i));
     }
     return row;
 }
 
 
 static double** PyMatrixToMatrix(PyObject* matrix){
-    int i, n = PyObject_Length(lst);
+    int i, n = PyObject_Length(matrix);
     double** returnMatrix = malloc(n * sizeof(double*));
     if (returnMatrix == NULL){
-        return NULL
+        return NULL;
     }
     for (i = 0; i < n; i++){
         returnMatrix[i] = NULL;
@@ -43,7 +52,7 @@ static PyObject* arrToPyList(double* arr, int length){
         pyDouble = Py_BuildValue("d", arr[i]);
         PyList_SetItem(pyList, i, pyDouble);
     }
-    return PyList;
+    return pyList;
 }
 
 
@@ -51,13 +60,13 @@ static PyObject* matrixToPyMatrix(double** matrix, int rows, int cols){
     PyObject* pyMatrix = PyList_New(rows);
     int i;
     for (i = 0; i < rows; i++){
-        PyList_SetItem(arrToPyList(matrix[i], cols), i);
+        PyList_SetItem(pyMatrix, i, arrToPyList(matrix[i], cols));
     }
     return pyMatrix;
 }
 
 
-static **double convertPyMatrixToCMatrix(PyObject* args, int* N, int* d){
+static double** convertPyMatrixToCMatrix(PyObject* args, int* N, int* d){
     double** inputMatrix=NULL;
     PyObject* pyMatrix;
     PyArg_ParseTuple(args, "O", &pyMatrix);
@@ -68,13 +77,6 @@ static **double convertPyMatrixToCMatrix(PyObject* args, int* N, int* d){
 }
 
 
-static void freeMatrix(double** matrix, int rows){
-    int i;
-    for(i=0;i<rows;i++){
-        free(matrix[i]);
-    }
-    free(matrix);
-}
 
 
 static PyObject* sym(PyObject* self, PyObject *args){
@@ -100,7 +102,7 @@ static PyObject* sym(PyObject* self, PyObject *args){
         return NULL;
     }
 
-    similarityMatrix(A, N, d, inputMatrix, &ADataPoints); /*creating A*/
+    similarityMatrix(A, N, d, inputMatrix); /*creating A*/
     pyMatrix = matrixToPyMatrix(A, N, N); /*turning A into python matrix*/
 
     /*freeing memory*/
@@ -117,7 +119,6 @@ static PyObject* ddg(PyObject* self, PyObject *args){
     int N, d;
     
     inputMatrix = convertPyMatrixToCMatrix(args, &N, &d);
-    inputMatrix = convertPyMatrixToCMatrix(args, &N, &d);
     if (inputMatrix == NULL){
         /*send error to python*/
         PyErr_NoMemory(); 
@@ -125,8 +126,8 @@ static PyObject* ddg(PyObject* self, PyObject *args){
     }
 
     /*initalizing matrices*/
-    A = initializeMatrix(N, N, ADataPoints);
-    D = initializeMatrix(N, N, DDataPoints);
+    A = initializeMatrix(N, N, &ADataPoints);
+    D = initializeMatrix(N, N, &DDataPoints);
     
     /*if malloc failed*/
     if(A==NULL||ADataPoints==NULL||D==NULL||DDataPoints==NULL){
@@ -134,7 +135,7 @@ static PyObject* ddg(PyObject* self, PyObject *args){
         free(ADataPoints);
         free(D);
         free(DDataPoints);
-       freeMatrix(inputMatrix, N);
+        freeMatrix(inputMatrix, N);
         PyErr_NoMemory(); 
         return NULL;
     }
@@ -166,9 +167,9 @@ static PyObject* norm(PyObject* self, PyObject *args){
     }
 
     /*initalizing matrices*/
-    A = initializeMatrix(N, N, ADataPoints);
-    D = initializeMatrix(N, N, DDataPoints);
-    W = initializeMatrix(N, N, WDataPoints);
+    A = initializeMatrix(N, N, &ADataPoints);
+    D = initializeMatrix(N, N, &DDataPoints);
+    W = initializeMatrix(N, N, &WDataPoints);
     
     /*if malloc failed*/
     if (checkMallocFailure3(A, D, W, ADataPoints, DDataPoints, WDataPoints) == 1){
@@ -191,7 +192,7 @@ static PyObject* norm(PyObject* self, PyObject *args){
 
 static PyObject* symnmf(PyObject* self, PyObject *args){
     double **W, **H;
-    PyObject* pyMatrixW, *pyMatrixH;
+    PyObject *pyMatrixW, *pyMatrixH, *resMatrix;
     int N, k, res;
     
     /*converting python W and H to C matrices*/
@@ -202,18 +203,16 @@ static PyObject* symnmf(PyObject* self, PyObject *args){
     H = PyMatrixToMatrix(pyMatrixH);
     res = symnmfAlgorithm(W, H, N, k); /*running the symnmf algo, updates H*/
     if (res == 1){
-        freeMatrix(W);
-        freeMatrix(H);
+        freeMatrix(W, N);
+        freeMatrix(H, N);
         PyErr_NoMemory(); 
         return NULL;
     }
-    
-    pyMatrix = matrixToPyMatrix(H, N, N); /*turning H into python matrix*/
+    resMatrix = matrixToPyMatrix(H, N, k); /*turning H into python matrix*/
     /*freeing memory*/
-    freeMatrix(W);
-    freeMatrix(H);
-
-    return pyMatrix;
+    freeMatrix(W, N);
+    freeMatrix(H, N);
+    return resMatrix;
 }
 
 
