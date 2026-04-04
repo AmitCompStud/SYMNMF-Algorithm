@@ -33,25 +33,6 @@ def handle_goal(goal, matrix, k):
         W = symnmfmodule.norm(matrix) # creating W
         H = initialize_H(W, N, k)
         res = symnmfmodule.symnmf(W, H)
-
-        H = np.array(res)
-        HT = H.T
-
-        # 1. Multiply H and H^T using the @ operator
-        H_multiplied = H @ HT
-        
-        # 2. Make sure W is also a NumPy array for a clean comparison
-        W_np = np.array(W)
-        
-        # 3. Print them out to eyeball the difference!
-        print("=== H * H^T Matrix ===")
-        print_matrix(H_multiplied.tolist())
-        
-        print("\n=== Original W Matrix ===")
-        print_matrix(W)
-        print('\n')
-        difference = np.linalg.norm(W_np - H_multiplied)
-        print(f"\nFinal Difference (Frobenius Norm): {difference:.6f}")
     else:
         error()
     
