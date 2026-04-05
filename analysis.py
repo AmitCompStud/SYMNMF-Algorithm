@@ -3,7 +3,6 @@ import symnmf
 import sys
 from sklearn.metrics import silhouette_score
 import numpy as np
-import time
 
 
 def assign_kmeans(data_points, centroids):
