@@ -2,6 +2,8 @@ import sys
 import numpy as np
 import symnmfmodule
 
+# setting the np seed
+np.random.seed(1234)
 
 def error():
     print("An Error Has Occurred")
@@ -40,9 +42,6 @@ def handle_goal(goal, matrix, k):
 
 
 def main():
-    #setting the seed
-    np.random.seed(1234)
-
     # checking if argv is corect
     if len(sys.argv) != 4:
         error()
@@ -71,5 +70,4 @@ def main():
     
 
 if __name__ == "__main__":
-    
     main()

@@ -4,6 +4,8 @@ import sys
 from sklearn.metrics import silhouette_score
 import numpy as np
 
+# setting the np seed
+np.random.seed(1234)
 
 def assign_kmeans(data_points, centroids):
     kmeans_assignments = []
@@ -50,5 +52,4 @@ def main():
     return 0
 
 if __name__ == '__main__':
-    np.random.seed(1234)
     main()
