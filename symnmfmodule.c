@@ -77,8 +77,6 @@ static double** convertPyMatrixToCMatrix(PyObject* args, int* N, int* d){
 }
 
 
-
-
 static PyObject* sym(PyObject* self, PyObject *args){
     double** inputMatrix, **A = NULL, *ADataPoints = NULL;
     PyObject* pyMatrix;
