@@ -40,10 +40,10 @@ def main():
     symnmf_assignments = np.argmax(H_np, axis=1) # assigns index of cluster for each data point
 
     centroids_np = np.array(centroids)
-    kmeans_aassignments = assign_kmeans(data_points, centroids_np)
+    kmeans_assignments = assign_kmeans(data_points, centroids_np)
 
     # silhouette_score for each algorithm
-    score_kmeans = silhouette_score(data_points, kmeans_aassignments)
+    score_kmeans = silhouette_score(data_points, kmeans_assignments)
     score_symnmf = silhouette_score(data_points, symnmf_assignments)
     print(f"nmf: {score_symnmf:.4f}\nkmeans: {score_kmeans:.4f}")
     
