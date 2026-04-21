@@ -6,11 +6,17 @@ import symnmfmodule
 np.random.seed(1234)
 
 def error():
+    """
+    Prints the error message and exits the program.
+    """
     print("An Error Has Occurred")
     sys.exit(1)
 
 
 def print_matrix(matrix):
+    """
+    Prints the matrix in the required format.
+    """
     rows = len(matrix)
     for i in range(rows):
         formatted_row = [f"{val:.4f}" for val in matrix[i]]
@@ -18,12 +24,28 @@ def print_matrix(matrix):
 
 
 def initialize_H(W, N, k):
+    """
+    Initializes the H matrix with random values for SymNMF algorithm.
+    Input:
+    W: Normalized similarity matrix (N x N)
+    N: Number of data points (rows in H)
+    k: Number of clusters (columns in H)
+    Returns: H - Initialized H matrix (N x k)
+    """
     W_average = np.mean(W)
     upper = 2 * np.sqrt(W_average / k)
     H = np.random.uniform(0, upper, size=(N,k))
     return H.tolist()
 
 def handle_goal(goal, matrix, k):
+    """
+    Handles the specified goal by calling appropriate symnmfmodule functions.
+    Input:
+    goal: Operation to perform ("sym", "ddg", "norm", or "symnmf")
+    matrix: Input data matrix (list of lists)
+    k: Number of clusters (used only for "symnmf")
+    Returns: Result matrix from the operation
+    """
     N = len(matrix)
     if goal == "sym":
         res = symnmfmodule.sym(matrix)
@@ -42,12 +64,21 @@ def handle_goal(goal, matrix, k):
 
 
 def main():
+    """
+    Main entry point for the SymNMF Python program.
+    Command line arguments:
+    sys.argv[1]: k (number of clusters, integer)
+    sys.argv[2]: goal ("sym", "ddg", "norm", or "symnmf")
+    sys.argv[3]: input file path
+    Prints the result matrix.
+    """
     # checking if argv is corect
     if len(sys.argv) != 4:
         error()
     if not sys.argv[1].isdigit(): # if k is not a number, give an error
         error()
     k = int(sys.argv[1])
+
     goal = sys.argv[2]
     if goal not in ["symnmf", "sym", "ddg", "norm"]: # if goal is not one of the legal options
         error()
@@ -55,12 +86,12 @@ def main():
     file_path = sys.argv[3]
     try:
         input_matrix = np.loadtxt(file_path, delimiter=",")
-    except OSError:
+    except Exception:
         error()
     input_matrix = input_matrix.tolist() # turning into python list
     
     # checking that k is legal
-    if k >= len(input_matrix):
+    if k >= len(input_matrix) or k <= 1:
         error()
         
     # handle goal
